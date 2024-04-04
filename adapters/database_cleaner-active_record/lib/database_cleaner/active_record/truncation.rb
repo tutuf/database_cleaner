@@ -192,12 +192,16 @@ module DatabaseCleaner
 
       def tables_with_schema
         rows = select_rows <<-_SQL
-          SELECT schemaname || '.' || tablename
+        SELECT schemaname || '.' || tablename as table_name
           FROM pg_tables
-          WHERE
-            tablename !~ '_prt_' AND
-            #{::DatabaseCleaner::ActiveRecord::Base.exclusion_condition('tablename')} AND
-            schemaname = ANY (current_schemas(false))
+         WHERE tablename !~ '_prt_'
+           AND tablename <> 'schema_migrations' AND tablename <> 'ar_internal_metadata'
+           AND schemaname = ANY (
+                SELECT schema_name
+                  FROM information_schema.schemata
+                 WHERE schema_name not like 'information_schema'
+                   AND schema_name not like 'pg_%'
+               );
         _SQL
         rows.collect { |result| result.first }
       end
